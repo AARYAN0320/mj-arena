@@ -746,7 +746,7 @@ console.log('🔥 Firebase connected to project:', firebaseConfig.projectId);
 // CONFIGURATION
 // ══════════════════════════════════════════════════════════
 var CONFIG = {
-  prices:        { Cricket: 500, Pickleball: 300 },
+  prices:        { Cricket: 1400, Pickleball: 600},
   adminPass:     'admin123',
   upiId:         'mjsports@upi',
   arenaName:     'MJ Sports Arena',
@@ -945,7 +945,7 @@ function confirmBooking() {
   }
 
   var totalAmount = CONFIG.prices[selSport];
-  var advance = Math.floor(totalAmount / 2);
+var advance = Math.floor(totalAmount / 2);
 
   var booking = {
     name: name,
@@ -988,7 +988,7 @@ MJ Sports Arena`;
         var waLink =
 `https://wa.me/919041528165?text=${encodeURIComponent(msg)}`;
 
-        window.open(waLink, '_blank');
+       window.location.href = waLink;
 
         toast('Redirecting to WhatsApp...', 'success');
 
@@ -1362,7 +1362,7 @@ function closeQRModal() {
     </h2>
 
     <img
-      src="c:\Users\ASUS\Downloads\WhatsApp Image 2026-05-15 at 5.29.30 AM.jpeg"
+      src="qr.jpg.jpeg"
       style="
         width:260px;
         border-radius:16px;
