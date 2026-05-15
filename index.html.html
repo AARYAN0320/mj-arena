@@ -358,7 +358,9 @@ tr:hover td{background:rgba(255,255,255,.02)}
     <button class="nav-tab active" onclick="showPage('home')">Home</button>
     <button class="nav-tab" onclick="showPage('book')">Book Slot</button>
     <button class="nav-tab" onclick="showPage('today')">Today</button>
-    <button class="nav-tab" onclick="showPage('admin')">Admin</button>
+    <button class="nav-tab" onclick="openAdminLogin()">
+  Admin
+</button>
   </div>
 </nav>
 
@@ -973,7 +975,7 @@ var advance = Math.floor(totalAmount / 2);
 
 📅 Date: ${fmtDate(selDate)}
 
-🕐 Slot: ${fmtSlot(selSlot)}
+🕐 Slot: $selSlot
 
 💰 Total Amount: ₹${totalAmount}
 
@@ -1327,6 +1329,20 @@ function openQRModal() {
 
 function closeQRModal() {
   document.getElementById('qr-modal').style.display = 'none';
+}
+function openAdminLogin() {
+
+  var pass = prompt('Enter Admin Password');
+
+  if(pass === 'MJ2026@') {
+
+    showPage('admin');
+
+  } else {
+
+    alert('Wrong Password');
+
+  }
 }
 </script>
 <a
