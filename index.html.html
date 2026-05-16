@@ -846,8 +846,23 @@ function fmtDate(d) {
 }
 
 function isSlotBooked(sport, date, slot) {
+
   return window.bookings.some(function(b) {
-    return b.sport === sport && b.date === date && b.slots ? b.slots.join(', ') : b.slot === slot && !b.cancelled;
+
+    if (b.cancelled) return false;
+
+    if (b.sport !== sport) return false;
+
+    if (b.date !== date) return false;
+
+    // Multiple slots booking
+    if (b.slots && Array.isArray(b.slots)) {
+
+      return b.slots.includes(slot);
+    }
+
+    // Old single-slot booking
+    return b.slot === slot;
   });
 }
 
