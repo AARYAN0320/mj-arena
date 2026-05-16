@@ -526,6 +526,19 @@ tr:hover td{background:rgba(255,255,255,.02)}
       <div style="margin-top:1.25rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.75rem">
         <div style="font-size:14px;color:var(--muted)">
           Total: <span id="booking-amount" style="color:var(--accent);font-size:18px;font-weight:600;margin-left:4px"></span>
+          <div style="margin-top:10px;font-size:14px;color:var(--muted)">
+  Advance: 
+  <span id="advance-amount" style="color:var(--accent)">
+    ₹0
+  </span>
+</div>
+
+<div style="margin-top:6px;font-size:14px;color:var(--muted)">
+  Remaining:
+  <span id="remaining-amount" style="color:#ffb347">
+    ₹0
+  </span>
+</div>
         </div>
 </div>
 <div style="margin-top:1.2rem">
@@ -594,8 +607,6 @@ tr:hover td{background:rgba(255,255,255,.02)}
 
 </div>
 
-  Pay Advance & Book Slot →
-</button>
       </div>
     </div>
   </div>
@@ -617,22 +628,9 @@ tr:hover td{background:rgba(255,255,255,.02)}
     </div>
   </div>
 </div>
-
 <!-- PAGE: ADMIN -->
+
 <div id="page-admin" style="display:none">
-  <div id="admin-login-wrap">
-    <div class="login-wrap">
-      <div class="login-card">
-        <div class="login-title">⚙️ Admin Login</div>
-        <div>
-          <label>Password</label>
-          <input type="password" id="admin-pw" placeholder="Enter admin password" onkeydown="if(event.key==='Enter')adminLogin()"/>
-          <div class="login-hint">Default: <strong>admin123</strong></div>
-        </div>
-        <button class="btn btn-primary w-full" onclick="adminLogin()">Login &rarr;</button>
-      </div>
-    </div>
-  </div>
 
   <div id="admin-dashboard" style="display:none">
     <div class="container" style="padding-top:2rem">
@@ -849,7 +847,7 @@ function fmtDate(d) {
 
 function isSlotBooked(sport, date, slot) {
   return window.bookings.some(function(b) {
-    return b.sport === sport && b.date === date && b.slot === slot && !b.cancelled;
+    return b.sport === sport && b.date === date && b.slots ? b.slots.join(', ') : b.slot === slot && !b.cancelled;
   });
 }
 
@@ -883,7 +881,7 @@ function showPage(p) {
 // ══════════════════════════════════════════════════════════
 function selectSport(s) {
   selSport = s;
-  selSlot  = null;
+  selSlots = [];
   ['Cricket','Pickleball'].forEach(function(sp) {
     var btn = document.getElementById('btn-' + sp);
     btn.className = 'sport-btn' + (sp === s ? ' selected ' + (sp === 'Cricket' ? 'cricket' : 'pickle') : '');
@@ -921,7 +919,7 @@ function loadSlots() {
     } else if (past) {
       html += '<div class="slot booked">' + label.replace(' – ','<br>') + '<br><span style="font-size:10px;opacity:.8">Past</span></div>';
     } else {
-      html += '<div class="slot" id="slot-' + s.replace(':','_') + '" onclick="selectSlot(\'' + s + '\')">' + label.replace(' – ','<br>') + '</div>';
+      html += '<div class="slot" data-slot="' + s + '" id="slot-' + s.replace(':','_') + '" onclick="selectSlot(\'' + s + '\')">'+ label.replace(' – ','<br>') + '</div>';
     }
   });
   html += '</div>';
@@ -996,10 +994,12 @@ function confirmBooking() {
     return;
   }
 
- if (!selSport || selSlots.length === 0 || !selDate)
-    toast('Please select sport, date and slot', 'error');
-    return;
-  }
+ if (!selSport || selSlots.length === 0 || !selDate) {
+
+  toast('Please select sport, date and slot', 'error');
+
+  return;
+}
 
  var totalAmount =
   selSlots.length * CONFIG.prices[selSport];
@@ -1016,12 +1016,13 @@ if(!proof){
 
   return;
 }
+var selectedSlots = [...selSlots];
   var booking = {
     name: name,
     phone: phone,
     sport: selSport,
     date: selDate,
-   slots: selSlots,
+   slots: selectedSlots,
     amount: totalAmount,
     bookedAt: new Date().toISOString(),
     cancelled: false
@@ -1041,8 +1042,7 @@ if(!proof){
 🏏 Sport: ${selSport}
 
 📅 Date: ${fmtDate(selDate)}
-
-selSlots.join(', ')
+🕐 Slots: ${selectedSlots.join(', ')}
 
 💰 Total Amount: ₹${totalAmount}
 
@@ -1066,7 +1066,7 @@ MJ Sports Arena`;
 
         document.getElementById('customer-form').style.display = 'none';
 
-        selSlot = null;
+        selSlots = [];
 
         loadSlots();
 
@@ -1087,7 +1087,7 @@ function showConfirmModal(b) {
       '<div class="confirm-detail"><span class="confirm-label">Name</span><strong>' + b.name + '</strong></div>' +
       '<div class="confirm-detail"><span class="confirm-label">Sport</span>' + b.sport + '</div>' +
       '<div class="confirm-detail"><span class="confirm-label">Date</span>' + fmtDate(b.date) + '</div>' +
-      '<div class="confirm-detail"><span class="confirm-label">Time</span>' + fmtSlot(b.slot) + '</div>' +
+      '<div class="confirm-detail"><span class="confirm-label">Time</span>' + '<td>' + (b.slots ? b.slots.join(', ') : b.slot) + '</td>' + '</div>' +
       '<div class="confirm-detail"><span class="confirm-label">Amount</span><strong style="color:var(--accent);font-size:16px">₹' + b.amount + '</strong></div>' +
     '</div>' +
     '<div style="font-size:12px;color:var(--muted);margin-bottom:.75rem;text-align:center">✅ Saved to Firebase · WhatsApp sent to customer</div>' +
@@ -1202,7 +1202,10 @@ function renderUpcoming() {
   var today    = getTodayStr();
   var upcoming = window.bookings
     .filter(function(b){ return !b.cancelled && b.date >= today; })
-    .sort(function(a,b){ return a.date.localeCompare(b.date) || a.slot.localeCompare(b.slot); })
+    .sort(function(a,b){ return a.date.localeCompare(b.date) || (a.slots ? a.slots.join(',') : a.slot)
+.localeCompare(
+  b.slots ? b.slots.join(',') : b.slot
+);})
     .slice(0, 5);
 
   if (!upcoming.length) {
@@ -1216,7 +1219,7 @@ function renderUpcoming() {
         '<span class="badge ' + cls + '">' + b.sport + '</span>' +
         '<div><div style="font-size:14px;font-weight:500">' + b.name + '</div><div style="font-size:12px;color:var(--muted)">' + b.phone + '</div></div>' +
       '</div>' +
-      '<div style="text-align:right"><div style="font-size:13px">' + fmtDate(b.date) + '</div><div style="font-size:12px;color:var(--muted)">' + fmtSlot(b.slot) + '</div></div>' +
+      '<div style="text-align:right"><div style="font-size:13px">' + fmtDate(b.date) + '</div><div style="font-size:12px;color:var(--muted)">' + (b.slots ? b.slots.join(', ') : b.slot)+ '</div></div>' +
     '</div>';
   }).join('');
 }
@@ -1248,7 +1251,7 @@ function renderTable() {
       '<td><div style="font-weight:500">' + b.name + '</div><div style="font-size:12px;color:var(--muted)">' + b.phone + '</div></td>' +
       '<td><span class="badge ' + sportCls + '">' + b.sport + '</span></td>' +
       '<td style="white-space:nowrap">' + fmtDate(b.date) + '</td>' +
-      '<td style="white-space:nowrap;font-size:13px">' + fmtSlot(b.slot) + '</td>' +
+      '<td style="white-space:nowrap;font-size:13px">' + (b.slots ? b.slots.join(', ') : b.slot)+ '</td>' +
       '<td style="color:var(--accent);font-weight:500">₹' + b.amount + '</td>' +
       '<td>' + status + '</td>' +
       '<td>' + action + '</td>' +
@@ -1269,7 +1272,7 @@ function showConfirmCancelModal(b) {
       '<div><span style="color:var(--muted)">Customer: </span><strong>' + b.name + '</strong></div>' +
       '<div><span style="color:var(--muted)">Sport: </span>' + b.sport + '</div>' +
       '<div><span style="color:var(--muted)">Date: </span>' + fmtDate(b.date) + '</div>' +
-      '<div><span style="color:var(--muted)">Slot: </span>' + fmtSlot(b.slot) + '</div>' +
+      '<div><span style="color:var(--muted)">Slot: </span>' + (b.slots ? b.slots.join(', ') : b.slot) + '</div>' +
       '<div><span style="color:var(--muted)">Amount: </span>₹' + b.amount + '</div>' +
     '</div>' +
     '<div style="font-size:13px;color:var(--danger);margin-bottom:1.25rem">⚠️ This will free up the slot for others to book.</div>' +
@@ -1404,7 +1407,13 @@ function openAdminLogin() {
 
   if(pass === 'MJ2026@') {
 
+    window.isAdmin = true;
+
+    document.getElementById('admin-dashboard').style.display = '';
+
     showPage('admin');
+
+    renderAdmin();
 
   } else {
 
