@@ -796,7 +796,7 @@ var CONFIG = {
 // ══════════════════════════════════════════════════════════
 window.bookings = [];   // populated by Firebase listener
 var selSport    = null;
-var selSlot     = null;
+var selSlots = [];
 var selDate     = null;
 window.isAdmin  = false;
 var adminFilter = 'All';
@@ -811,14 +811,33 @@ function getTodayStr() {
   return new Date().toISOString().split('T')[0];
 }
 
-function fmtSlot(s) {
-  var h   = parseInt(s, 10);
-  var am  = h < 12 ? 'AM' : 'PM';
-  var h12 = h % 12 || 12;
-  var eh  = (h + 1) % 24;
-  var eam = eh < 12 ? 'AM' : 'PM';
-  var eh12 = eh % 12 || 12;
-  return h12 + ' ' + am + ' – ' + eh12 + ' ' + eam;
+function fmtSlot(slot){
+
+  if(slot.includes('-')){
+
+    var parts = slot.split('-');
+
+    return convertTime(parts[0]) + ' - ' + convertTime(parts[1]);
+  }
+
+  var start = parseInt(slot.split(':')[0]);
+
+  var end = start + 1;
+
+  return convertTime(slot) + ' - ' + convertTime(end + ':00');
+}
+
+function convertTime(time){
+
+  var h = parseInt(time.split(':')[0]);
+
+  var suffix = h >= 12 ? 'PM' : 'AM';
+
+  h = h % 12;
+
+  if(h === 0) h = 12;
+
+  return h + ' ' + suffix;
 }
 
 function fmtDate(d) {
@@ -884,7 +903,7 @@ function loadSlots() {
     return;
   }
   selDate = dateVal;
-  selSlot = null;
+ selSlots = [];
   document.getElementById('customer-form').style.display = 'none';
 
   var today   = getTodayStr();
@@ -908,23 +927,59 @@ function loadSlots() {
   html += '</div>';
   document.getElementById('slots-wrapper').innerHTML = html;
 }
+function selectSlot(slot){
 
-function selectSlot(s) {
-  if (selSlot) {
-    var prev = document.getElementById('slot-' + selSlot.replace(':','_'));
-    if (prev) prev.className = 'slot';
+  var idx = selSlots.indexOf(slot);
+
+  if(idx > -1){
+
+    selSlots.splice(idx,1);
+
+  } else {
+
+    selSlots.push(slot);
   }
-  selSlot = s;
-  var el = document.getElementById('slot-' + s.replace(':','_'));
-  if (el) el.className = 'slot selected';
-  var price = CONFIG.prices[selSport];
-  document.getElementById('booking-summary-text').innerHTML =
-    '📋 <strong>' + selSport + '</strong> &nbsp;·&nbsp; 📅 ' + fmtDate(selDate) + ' &nbsp;·&nbsp; 🕐 ' + fmtSlot(s);
-  document.getElementById('booking-amount').textContent = '₹' + price;
-  document.getElementById('customer-form').style.display = '';
-  document.getElementById('cust-name').focus();
-}
 
+  document.querySelectorAll('.slot').forEach(function(el){
+
+    if(selSlots.includes(el.dataset.slot)){
+
+      el.classList.add('selected');
+
+    } else {
+
+      el.classList.remove('selected');
+    }
+
+  });
+
+  var total =
+    selSlots.length * CONFIG.prices[selSport];
+
+  var advance =
+    Math.floor(total / 2);
+
+  var remaining =
+    total - advance;
+
+  document.getElementById('booking-amount').textContent =
+    '₹' + total;
+
+  document.getElementById('advance-amount').textContent =
+    '₹' + advance;
+
+  document.getElementById('remaining-amount').textContent =
+    '₹' + remaining;
+
+  if(selSlots.length > 0){
+
+    document.getElementById('customer-form').style.display = '';
+
+  } else {
+
+    document.getElementById('customer-form').style.display = 'none';
+  }
+}
 // ✅ FIXED: confirmBooking saves to Firebase AND opens WhatsApp in same click
 function confirmBooking() {
 
@@ -941,20 +996,32 @@ function confirmBooking() {
     return;
   }
 
-  if (!selSport || !selSlot || !selDate) {
+ if (!selSport || selSlots.length === 0 || !selDate)
     toast('Please select sport, date and slot', 'error');
     return;
   }
 
-  var totalAmount = CONFIG.prices[selSport];
+ var totalAmount =
+  selSlots.length * CONFIG.prices[selSport];
 var advance = Math.floor(totalAmount / 2);
+var proof =
+  document.getElementById('payment-proof').files[0];
 
+if(!proof){
+
+  toast(
+    'Upload payment screenshot first',
+    'error'
+  );
+
+  return;
+}
   var booking = {
     name: name,
     phone: phone,
     sport: selSport,
     date: selDate,
-    slot: selSlot,
+   slots: selSlots,
     amount: totalAmount,
     bookedAt: new Date().toISOString(),
     cancelled: false
@@ -975,13 +1042,14 @@ var advance = Math.floor(totalAmount / 2);
 
 📅 Date: ${fmtDate(selDate)}
 
-🕐 Slot: $selSlot
+selSlots.join(', ')
 
 💰 Total Amount: ₹${totalAmount}
 
 ✅ Advance Paid: ₹${advance}
 
-📸 Payment screenshot will be shared shortly.
+📸 Payment screenshot uploaded successfully.
+Please send screenshot in this WhatsApp chat.
 
 ━━━━━━━━━━━━━━━
 MJ Sports Arena`;
